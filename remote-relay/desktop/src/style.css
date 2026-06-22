@@ -1,0 +1,60 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  display: flex; height: 100vh; background: #0d1117; color: #c9d1d9;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
+}
+#sidebar {
+  width: 260px; min-width: 260px; border-right: 1px solid #30363d;
+  padding: 16px; display: flex; flex-direction: column; gap: 12px;
+}
+h1 { font-size: 18px; color: #58a6ff; margin-bottom: 4px; }
+.status { font-size: 12px; color: #8b949e; }
+.status.connected { color: #3fb950; }
+.status.disconnected { color: #f85149; }
+#deviceList { flex: 1; overflow-y: auto; }
+.deviceItem {
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  border-radius: 8px; cursor: pointer; transition: background .15s;
+  border: 1px solid transparent;
+}
+.deviceItem:hover { background: #161b22; }
+.deviceItem.active { border-color: #58a6ff; background: #161b22; }
+.deviceItem input { cursor: pointer; }
+.deviceItem .info { flex: 1; }
+.deviceItem .name { font-size: 14px; font-weight: 500; }
+.deviceItem .res { font-size: 11px; color: #8b949e; }
+#controls {
+  display: flex; gap: 8px; flex-wrap: wrap; padding-top: 8px;
+  border-top: 1px solid #30363d;
+}
+button {
+  flex: 1; min-width: 70px; padding: 8px 10px; border-radius: 6px;
+  border: 1px solid #30363d; background: #21262d; color: #c9d1d9;
+  cursor: pointer; font-size: 13px;
+}
+button:hover { background: #30363d; }
+button.primary { background: #1f6feb; border-color: #1f6feb; }
+button.primary:hover { background: #388bfd; }
+button.danger { background: #da3633; border-color: #da3633; }
+#main {
+  flex: 1; display: flex; flex-direction: column; padding: 16px; gap: 12px;
+  overflow: hidden;
+}
+#canvasWrap {
+  flex: 1; background: #010409; border: 1px solid #30363d; border-radius: 10px;
+  display: flex; align-items: center; justify-content: center; overflow: auto;
+  position: relative;
+}
+canvas {
+  max-width: 100%; max-height: 100%; cursor: crosshair;
+  background: #000; display: block;
+}
+#log {
+  height: 120px; min-height: 120px; background: #010409;
+  border: 1px solid #30363d; border-radius: 8px; padding: 10px;
+  font-family: ui-monospace, SFMono-Regular, monospace; font-size: 12px;
+  overflow-y: auto; white-space: pre-wrap;
+}
+.hint { font-size: 12px; color: #8b949e; margin-top: 4px; }
+.empty-tip { color: #8b949e; padding: 10px; font-size: 13px; }

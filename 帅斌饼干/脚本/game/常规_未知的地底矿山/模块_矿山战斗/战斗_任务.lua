@@ -1,0 +1,3 @@
+local BattleTask = {}
+
+return BattleTask
