@@ -2,6 +2,7 @@ local Color = require("lib.color")
 local Touch = require("lib.touch")
 local Ocr = require("lib.ocr")
 local Logger = require("lib.logger")
+local Dialog = require("lib.dialog")
 
 local MineFeatureLib = require("game.常规_未知的地底矿山.矿山_特征库")
 local MineHomePage = require("game.常规_未知的地底矿山.矿山首页_页面")
@@ -382,17 +383,19 @@ function MiningPage.autoSelectCookieAndStart()
 		return false
 	end
 	Touch.tapArea(startBtn , 500)
-	
-	local dialog = MiningFeatures.dialogConfirmCookie
-	if hasFeature(dialog.feature) and Color.waitMatch(dialog.feature , 1500 , 500 , 500) then
-		if dialog.todayNotAskAgain then
-			Touch.tapArea(dialog.todayNotAskAgain , 800)
-		end
-		if not dialog.confirmBtn then
-			Logger.warn(TAG .. " dialogConfirmCookie.confirmBtn 未配置")
-			return false
-		end
-		Touch.tapArea(dialog.confirmBtn , 800)
+
+	local cookieDialog = Dialog.new(MiningFeatures.dialogConfirmCookie , { tag = TAG })
+	local ok , reason = cookieDialog:handle({
+		mode = "flow" ,
+		action = "confirm" ,
+		neverAgain = true ,
+		waitAppearMs = 1500 ,
+		waitGoneMs = 3000 ,
+		required = false ,
+	})
+	if not ok then
+		Logger.warn(TAG .. " 确认消耗饼干弹窗处理失败 | " .. tostring(reason))
+		return false
 	end
 	return true
 end

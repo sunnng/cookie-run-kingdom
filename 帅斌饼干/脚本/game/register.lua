@@ -10,7 +10,7 @@ local Guard = require("core.guard")
 local Logger = require("lib.logger")
 local UserConfig = require("lib.user-config")
 local StatusHud = require("lib.status-hud")
-local Touch = require("lib.touch")
+local Dialog = require("lib.dialog")
 
 local MineTask = require("game.常规_未知的地底矿山.模块_矿山勘查.勘查_任务")
 local MiningTask = require("game.常规_未知的地底矿山.模块_矿山开采.开采_任务")
@@ -69,9 +69,17 @@ function Register.all()
 
 	-- ========== 守卫注册（优先级高->低）==========
 	local unstableNetworkPopup = PopupPage["网络联机状态不稳定"]
-	Guard.register("网络联机状态不稳定", unstableNetworkPopup["特征"], function()
-		Touch.tapArea(unstableNetworkPopup["按钮_确认"], 800)
-	end, 10)
+	local unstableDialog = Dialog.new({
+		name = "网络联机状态不稳定",
+		feature = unstableNetworkPopup["特征"],
+		confirmBtn = unstableNetworkPopup["按钮_确认"],
+	}, { tag = "[Register]" })
+	Guard.register(
+		"网络联机状态不稳定",
+		unstableDialog.def.feature,
+		unstableDialog:toGuardHandler({ action = "confirm", waitGoneMs = 2000 }),
+		10
+	)
 
 
 	-- ========== 调度任务注册（矿山优先，空闲时布谷鸟广场短切片）==========

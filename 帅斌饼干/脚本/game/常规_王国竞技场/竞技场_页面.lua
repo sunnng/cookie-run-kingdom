@@ -7,6 +7,7 @@ local Ocr = require("lib.ocr")
 local U = require("lib.utils")
 local Guard = require("core.guard")
 local Logger = require("lib.logger")
+local DialogLib = require("lib.dialog")
 local F = require("game.常规_王国竞技场.竞技场_特征库")
 
 local ArenaPage = {}
@@ -278,17 +279,17 @@ function ArenaPage.runBattle()
 	local start = F.teamSelect.startBattle
 	Logger.info(TAG .. " 点击开始战斗")
 	tap(start[1] , start[2])
-	sleep(1000)
 
-	if cmpColorExT(F.dialog.deployMore.feature) == 1 then
-		Logger.info(TAG .. " 确认「部署更多饼干」")
-		tap(F.dialog.deployMore.confirm[1] , F.dialog.deployMore.confirm[2])
-		sleep(1000)
-	end
-	if cmpColorExT(F.dialog.missingTopping.feature) == 1 then
-		Logger.info(TAG .. " 确认「未装载配料」")
-		tap(F.dialog.missingTopping.confirm[1] , F.dialog.missingTopping.confirm[2])
-		sleep(1000)
+	local deployDialog = DialogLib.new(F.dialog.deployMore , { tag = TAG })
+	local toppingDialog = DialogLib.new(F.dialog.missingTopping , { tag = TAG })
+	local ok , summary = DialogLib.resolveUntilIdle({
+		{ dialog = deployDialog , name = "deployMore" , priority = 10 ,
+			opts = { action = "confirm" , waitGoneMs = 1000 , intervalMs = 500 } } ,
+		{ dialog = toppingDialog , name = "missingTopping" , priority = 10 ,
+			opts = { action = "confirm" , waitGoneMs = 1000 , intervalMs = 500 } } ,
+	} , { timeoutMs = 8000 , minWaitMs = 500 , settleMs = 800 , maxHandled = 2 , tag = TAG })
+	if not ok then
+		Logger.warn(TAG .. " 战斗前弹窗处理失败 | " .. tostring(summary and summary.reason))
 	end
 
 	-- 战斗开始 UI 只短暂闪现，不能用来判断「已在战斗中」

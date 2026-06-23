@@ -3,6 +3,7 @@ local Touch = require("lib.touch")
 local Ocr = require("lib.ocr")
 local Logger = require("lib.logger")
 local Guard = require("core.guard")
+local DialogLib = require("lib.dialog")
 
 local Features = require("game.常规_海滩交易所.交易所_坐标库")
 
@@ -174,37 +175,67 @@ function MarketPage.tapItemShortageCancel(delayMs)
 end
 
 function MarketPage.tapShelfAndResolve(pt)
+	local confirmDialog = DialogLib.new(Dialog , { tag = TAG })
+	local shortageDialog = DialogLib.new(ShortageDialog , { tag = TAG })
+
 	Touch.tapArea(slotTapRect(pt) , 800)
-	if not MarketPage.waitConfirmDialog(5000 , 300) then
-		Logger.warn(TAG .. " 点击货架后确认弹窗未出现")
+
+	local ok , outcome , reason = DialogLib.resolveAfterPrimary({
+		primary = {
+			dialog = confirmDialog ,
+			opts = {
+				mode = "flow" ,
+				action = "confirm" ,
+				waitAppearMs = 5000 ,
+				required = true ,
+				intervalMs = 300 ,
+			} ,
+		} ,
+		watch = {
+			{
+				dialog = shortageDialog ,
+				opts = { action = "cancel" , waitGoneMs = 2000 , intervalMs = 300 } ,
+				result = "shortage" ,
+				after = function()
+					if confirmDialog:isVisible() then
+						confirmDialog:handle({
+							mode = "ifVisible" ,
+							action = "cancel" ,
+							waitGoneMs = 3000 ,
+							intervalMs = 300 ,
+						})
+					end
+				end ,
+			} ,
+		} ,
+		successWhen = function()
+			return not confirmDialog:isVisible()
+		end ,
+		successResult = "purchased" ,
+		timeoutMs = 5000 ,
+		intervalMs = 300 ,
+		tag = TAG ,
+	})
+
+	if not ok then
+		if reason == "not_visible" then
+			Logger.warn(TAG .. " 点击货架后确认弹窗未出现")
+		else
+			Logger.warn(TAG .. " 购买确认后结果未知，尝试关闭确认弹窗 | " .. tostring(reason))
+			confirmDialog:handle({
+				mode = "ifVisible" ,
+				action = "cancel" ,
+				waitGoneMs = 3000 ,
+				intervalMs = 300 ,
+			})
+		end
 		return "failed"
 	end
-	local btn = Dialog.confirmBtn or Dialog.buyBtn
-	if not btn then
-		Logger.warn(TAG .. " confirmDialog.confirmBtn/buyBtn 未配置")
-		return "failed"
+
+	if outcome == "shortage" then
+		Logger.info(TAG .. " 命中道具不足弹窗，取消本次购买")
 	end
-	Touch.tapArea(btn , 800)
-	local deadline = tickCount() + 5000
-	while tickCount() < deadline do
-		if MarketPage.isItemShortageDialog() then
-			Logger.info(TAG .. " 命中道具不足弹窗，取消本次购买")
-			MarketPage.tapItemShortageCancel(800)
-			Guard.sleep(300 , 300)
-			if hasFeature(Dialog.feature) and MarketPage.isConfirmDialog() then
-				MarketPage.tapDialogClose(800)
-				Color.waitGone(Dialog.feature , 3000 , 300)
-			end
-			return "shortage"
-		end
-		if hasFeature(Dialog.feature) and not MarketPage.isConfirmDialog() then
-			return "purchased"
-		end
-		Guard.sleep(300 , 300)
-	end
-	Logger.warn(TAG .. " 购买确认后结果未知，尝试关闭确认弹窗")
-	MarketPage.tapDialogClose(800)
-	return "failed"
+	return outcome
 end
 
 function MarketPage.isFreeRefresh()
