@@ -16,10 +16,26 @@ local Session = require("game.常规_未知的地底矿山.模块_矿山勘查.�
 local MiningSession = require("game.常规_未知的地底矿山.模块_矿山开采.开采_会话")
 local SeasideMarketSession = require("game.常规_海滩交易所.交易所_会话")
 local ArenaSession = require("game.常规_王国竞技场.竞技场_会话")
+local BattleSession = require("game.常规_未知的地底矿山.模块_矿山战斗.战斗_会话")
 
 local Runtime = {}
 
 local TAG = "[Runtime]"
+
+--- 拼装矿山等待 HUD 的 extra 文本
+local function getMineWaitExtraText(arenaRemain, battleRemain)
+	local parts = {}
+	if battleRemain > 0 then
+		parts[#parts + 1] = "战斗 " .. battleRemain .. "s"
+	end
+	if arenaRemain > 0 then
+		parts[#parts + 1] = "竞技场 " .. arenaRemain .. "s"
+	end
+	if #parts == 0 then
+		return "挂机中"
+	end
+	return table.concat(parts, " · ")
+end
 
 --- 业务注入点，由 game.register 赋值
 Runtime.register = function()
@@ -70,21 +86,23 @@ function Runtime.run()
 			local arenaCfg = UserConfig.get("arena")
 			local farRemain = mineCfg.surveyEnabled and Session.restoreProgress() or 0
 			local miningRemain = mineCfg.miningEnabled and MiningSession.restoreProgress() or 0
+			local battleRemain = mineCfg.battleEnabled and BattleSession.getTimeUntilNext(mineCfg.battleIntervalSec) or 0
 			local marketRemain = marketCfg and marketCfg.enabled and SeasideMarketSession.restoreProgress() or 0
 			local arenaRemain = arenaCfg and arenaCfg.enabled and ArenaSession.getTimeUntilRefresh() or 0
-			local waitRemain = math.max(farRemain , miningRemain , marketRemain , arenaRemain)
+			local waitRemain = math.max(farRemain , miningRemain , battleRemain , marketRemain , arenaRemain)
 			if waitRemain > 0 then
 				local idleSec = math.max(1 , math.floor(idleMs / 1000))
 				Logger.info(string.format(
-				TAG .. " [idle] 等待 剩余%ds（勘查%d 开采%d 海滩%d 竞技场%d）本轮tick %ds" ,
-				waitRemain , farRemain , miningRemain , marketRemain , arenaRemain , idleSec
+				TAG .. " [idle] 等待 剩余%ds（勘查%d 开采%d 战斗%d 海滩%d 竞技场%d）本轮tick %ds" ,
+				waitRemain , farRemain , miningRemain , battleRemain , marketRemain , arenaRemain , idleSec
 				))
 				for _ = 1 , idleSec do
 					farRemain = mineCfg.surveyEnabled and Session.restoreProgress() or 0
 					miningRemain = mineCfg.miningEnabled and MiningSession.restoreProgress() or 0
+					battleRemain = mineCfg.battleEnabled and BattleSession.getTimeUntilNext(mineCfg.battleIntervalSec) or 0
 					marketRemain = marketCfg and marketCfg.enabled and SeasideMarketSession.restoreProgress() or 0
 					arenaRemain = arenaCfg and arenaCfg.enabled and ArenaSession.getTimeUntilRefresh() or 0
-					waitRemain = math.max(farRemain , miningRemain , marketRemain , arenaRemain)
+					waitRemain = math.max(farRemain , miningRemain , battleRemain , marketRemain , arenaRemain)
 					if waitRemain <= 0 then
 						Logger.info(TAG .. " [idle] 等待已到期")
 						break
@@ -94,7 +112,7 @@ function Runtime.run()
 						miningSec = miningRemain > 0 and miningRemain or nil ,
 						marketSec = marketRemain > 0 and marketRemain or nil ,
 						target = mineCfg.targetFloor ,
-						extra = arenaRemain > 0 and ("竞技场 " .. arenaRemain .. "s") or "挂机中" ,
+						extra = getMineWaitExtraText(arenaRemain , battleRemain) ,
 					})
 					Guard.sleep(1000 , guardStep)
 				end

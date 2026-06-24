@@ -10,6 +10,7 @@ local UserConfig = require("lib.user-config")
 local SquareSession = require("game.常规_布谷鸟广场.广场_会话")
 local SeasideMarketSession = require("game.常规_海滩交易所.交易所_会话")
 local ArenaSession = require("game.常规_王国竞技场.竞技场_会话")
+local StarlightSession = require("game.常规_梦幻繁星岛.繁星岛_会话")
 
 local FeatureTab = {}
 
@@ -27,6 +28,24 @@ local function bindMineMiningCheckbox(handle)
 	imgui.setChecked(handle, mine.miningEnabled == true)
 	imgui.setOnCheck(handle, function(_, checked)
 		UserConfig.set("mine", { miningEnabled = checked })
+		UserConfig.save()
+	end)
+end
+
+local function bindMineBattleCheckbox(handle)
+	local mine = UserConfig.get("mine")
+	imgui.setChecked(handle, mine.battleEnabled == true)
+	imgui.setOnCheck(handle, function(_, checked)
+		UserConfig.set("mine", { battleEnabled = checked })
+		UserConfig.save()
+	end)
+end
+
+local function bindJellyCheckbox(handle)
+	local mine = UserConfig.get("mine")
+	imgui.setChecked(handle, mine.jellyEnabled == true)
+	imgui.setOnCheck(handle, function(_, checked)
+		UserConfig.set("mine", { jellyEnabled = checked })
 		UserConfig.save()
 	end)
 end
@@ -67,6 +86,15 @@ local function bindArenaCheckbox(handle)
 	end)
 end
 
+local function bindStarlightCheckbox(handle)
+	local starlight = UserConfig.get("starlight")
+	imgui.setChecked(handle, starlight and starlight.enabled == true)
+	imgui.setOnCheck(handle, function(_, checked)
+		UserConfig.set("starlight", { enabled = checked })
+		UserConfig.save()
+	end)
+end
+
 function FeatureTab.build(parent)
 	local layout = imgui.createVerticalLayout(parent, -1, 0)
 
@@ -98,6 +126,8 @@ function FeatureTab.build(parent)
 	Components.textLabel(mineRow, "[矿山]", 0, 0)
 	bindMineSurveyCheckbox(imgui.createCheckBox(mineRow, "勘查"))
 	bindMineMiningCheckbox(imgui.createCheckBox(mineRow, "开采"))
+	bindMineBattleCheckbox(imgui.createCheckBox(mineRow, "战斗"))
+	bindJellyCheckbox(imgui.createCheckBox(mineRow, "解除洋菜冻"))
 
 	local biscuitRow = imgui.createHorticalLayout(layout, -1, 80)
 	imgui.setLayoutBorderVisible(biscuitRow, true)
@@ -148,6 +178,29 @@ function FeatureTab.build(parent)
 		ArenaSession.clear()
 		refreshArenaSessionStatus()
 		toast("竞技场session已清除", 0, 0, 14)
+	end)
+
+	local starlightRow = imgui.createHorticalLayout(layout, -1, 80)
+	imgui.setLayoutBorderVisible(starlightRow, true)
+	Components.textLabel(starlightRow, "[繁星岛]", 0, 0)
+	bindStarlightCheckbox(imgui.createCheckBox(starlightRow, "梦幻繁星岛"))
+	local starlightSessionLabel = Components.textLabel(starlightRow, "状态: " .. StarlightSession.describe(), 0, 0)
+	local refreshStarlightSessionBtn = imgui.createButton(starlightRow, "刷新", 120, 52)
+	local clearStarlightSessionBtn = imgui.createButton(starlightRow, "重置", 120, 52)
+
+	local function refreshStarlightSessionStatus()
+		Components.setText(starlightSessionLabel, "状态: " .. StarlightSession.describe())
+	end
+
+	imgui.setOnClick(refreshStarlightSessionBtn, function()
+		refreshStarlightSessionStatus()
+		toast("繁星岛状态已刷新", 0, 0, 14)
+	end)
+
+	imgui.setOnClick(clearStarlightSessionBtn, function()
+		StarlightSession.clear()
+		refreshStarlightSessionStatus()
+		toast("繁星岛session已清除", 0, 0, 14)
 	end)
 end
 

@@ -8,10 +8,12 @@
 local Components = require("ui.components")
 local BiscuitConfigPanel = require("ui.biscuit-config-panel")
 local MiningConfigPanel = require("ui.mining-config-panel")
+local BattleConfigPanel = require("ui.battle-config-panel")
 local SeasideMarketConfigPanel = require("ui.seaside-market-config-panel")
 local UserConfig = require("lib.user-config")
 local MineSession = require("game.常规_未知的地底矿山.模块_矿山勘查.勘查_会话")
 local MiningSession = require("game.常规_未知的地底矿山.模块_矿山开采.开采_会话")
+local JellySession = require("game.常规_未知的地底矿山.模块_解除洋菜冻.解除洋菜冻_会话")
 
 local ConfigTab = {}
 
@@ -82,6 +84,66 @@ function ConfigTab.build(parent)
 		toast("开采会话已清除", 0, 0, 14)
 	end)
 
+	local battleTree = imgui.createTreeBoxLayout(layout, "矿山战斗", -1)
+	if not battleTree then
+		print("创建树形框失败:", imgui.getLastError())
+		return false
+	end
+	local battleIntervalInput = Components.labeledInput(battleTree, "战斗检测间隔(秒):", mine.battleIntervalSec or 21600)
+
+	local BattleSession = require("game.常规_未知的地底矿山.模块_矿山战斗.战斗_会话")
+	local battleSessionLabel = Components.textLabel(battleTree, "会话: " .. BattleSession.describe(mine.battleIntervalSec or 21600), -1, 0)
+	local battleSessionBtnRow = imgui.createHorticalLayout(battleTree, -1, 52)
+	imgui.setLayoutBorderVisible(battleSessionBtnRow, false)
+	local refreshBattleSessionBtn = imgui.createButton(battleSessionBtnRow, "刷新会话状态", 0, 52)
+	local clearBattleSessionBtn = imgui.createButton(battleSessionBtnRow, "清除战斗会话", -1, 52)
+
+	local function refreshBattleSessionStatus()
+		local interval = tonumber(imgui.getInputText(battleIntervalInput)) or 21600
+		Components.setText(battleSessionLabel, "会话: " .. BattleSession.describe(interval))
+	end
+
+	imgui.setOnClick(refreshBattleSessionBtn, function()
+		refreshBattleSessionStatus()
+		toast("战斗会话状态已刷新", 0, 0, 14)
+	end)
+
+	imgui.setOnClick(clearBattleSessionBtn, function()
+		BattleSession.clear()
+		refreshBattleSessionStatus()
+		toast("战斗会话已清除", 0, 0, 14)
+	end)
+
+	local battlePanel = BattleConfigPanel.build(battleTree)
+
+	local jellyTree = imgui.createTreeBoxLayout(layout, "解除洋菜冻", -1)
+	if not jellyTree then
+		print("创建树形框失败:", imgui.getLastError())
+		return false
+	end
+	local jellyIntervalInput = Components.labeledInput(jellyTree, "冷却间隔(秒):", mine.jellyIntervalSec or 3600)
+
+	local jellySessionLabel = Components.textLabel(jellyTree, "会话: " .. JellySession.describe(), -1, 0)
+	local jellySessionBtnRow = imgui.createHorticalLayout(jellyTree, -1, 52)
+	imgui.setLayoutBorderVisible(jellySessionBtnRow, false)
+	local refreshJellySessionBtn = imgui.createButton(jellySessionBtnRow, "刷新会话状态", 0, 52)
+	local clearJellySessionBtn = imgui.createButton(jellySessionBtnRow, "清除解除洋菜冻会话", -1, 52)
+
+	local function refreshJellySessionStatus()
+		Components.setText(jellySessionLabel, "会话: " .. JellySession.describe())
+	end
+
+	imgui.setOnClick(refreshJellySessionBtn, function()
+		refreshJellySessionStatus()
+		toast("解除洋菜冻会话状态已刷新", 0, 0, 14)
+	end)
+
+	imgui.setOnClick(clearJellySessionBtn, function()
+		JellySession.clear()
+		refreshJellySessionStatus()
+		toast("解除洋菜冻会话已清除", 0, 0, 14)
+	end)
+
 	local biscuitTree = imgui.createTreeBoxLayout(layout, "洗脆饼", -1)
 	if not biscuitTree then
 		print("创建树形框失败:", imgui.getLastError())
@@ -131,12 +193,24 @@ function ConfigTab.build(parent)
 		if miningIntervalSec and miningIntervalSec >= 60 then
 			partial.miningIntervalSec = math.floor(miningIntervalSec)
 		end
+		local battleIntervalSec = tonumber(imgui.getInputText(battleIntervalInput))
+		if battleIntervalSec and battleIntervalSec >= 60 then
+			partial.battleIntervalSec = math.floor(battleIntervalSec)
+		end
+		local jellyIntervalSec = tonumber(imgui.getInputText(jellyIntervalInput))
+		if jellyIntervalSec and jellyIntervalSec >= 60 then
+			partial.jellyIntervalSec = math.floor(jellyIntervalSec)
+		end
 
-		UserConfig.set("mine", partial)
 		local oreCards = miningPanel.save()
 		if #oreCards == 0 then
 			toast("至少选择一种矿石", 0, 0, 14)
 		end
+		local battleCfg = battlePanel.save()
+		for k, v in pairs(battleCfg) do
+			partial[k] = v
+		end
+		UserConfig.set("mine", partial)
 		biscuitPanel.save()
 		local restockBufferSec = tonumber(imgui.getInputText(marketBufferInput))
 		if restockBufferSec and restockBufferSec >= 0 then
@@ -168,12 +242,15 @@ function ConfigTab.build(parent)
 		UserConfig.save()
 
 		local saved = UserConfig.get("mine")
-		imgui.setInputText(targetInput , tostring(saved.targetFloor))
-		imgui.setInputText(gapInput , tostring(saved.farGap))
-		imgui.setInputText(pollInput , tostring(saved.ocrPollSec))
-		imgui.setInputText(waitInput , tostring(saved.farWaitSec))
-		imgui.setInputText(miningIntervalInput , tostring(saved.miningIntervalSec))
+		imgui.setInputText(targetInput, tostring(saved.targetFloor))
+		imgui.setInputText(gapInput, tostring(saved.farGap))
+		imgui.setInputText(pollInput, tostring(saved.ocrPollSec))
+		imgui.setInputText(waitInput, tostring(saved.farWaitSec))
+		imgui.setInputText(miningIntervalInput, tostring(saved.miningIntervalSec))
+		imgui.setInputText(battleIntervalInput, tostring(saved.battleIntervalSec or 21600))
+		imgui.setInputText(jellyIntervalInput, tostring(saved.jellyIntervalSec or 3600))
 		miningPanel.refresh()
+		battlePanel.refresh()
 
 		local savedBiscuit = UserConfig.get("biscuit")
 		imgui.setInputText(biscuitPanel.maxRollsInput, tostring(savedBiscuit.maxRolls))
@@ -184,7 +261,7 @@ function ConfigTab.build(parent)
 			end
 		end
 		local savedMarket = UserConfig.get("seasideMarket")
-		imgui.setInputText(marketBufferInput , tostring(savedMarket.restockBufferSec or 30))
+		imgui.setInputText(marketBufferInput, tostring(savedMarket.restockBufferSec or 30))
 		marketPanel.refresh()
 
 		local savedArena = UserConfig.get("arena")

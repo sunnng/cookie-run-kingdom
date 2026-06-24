@@ -15,6 +15,7 @@ Dialog.__index = Dialog
 
 local DEFAULT_TAG = "[Dialog]"
 
+--- 标准化弹窗定义参数
 --- @param raw table|nil
 --- @return table
 local function normalizeDef(raw)
@@ -30,6 +31,7 @@ local function normalizeDef(raw)
 	}
 end
 
+--- 执行一次点击：坐标、区域
 --- @param target table|nil
 --- @param tapDelayMs number|nil
 --- @return boolean
@@ -54,6 +56,7 @@ local function performTap(target, tapDelayMs)
 	return false
 end
 
+--- 合并处理选项
 --- @param opts table|nil
 --- @param defaultMode string|nil
 --- @return table
@@ -111,6 +114,7 @@ local function sortByPriority(candidates)
 	return list
 end
 
+--- 查找首个可见候选弹窗
 --- @param sorted table
 --- @return table|nil
 local function findFirstVisibleCandidate(sorted)
@@ -190,17 +194,15 @@ function Dialog:tapCancel(delayMs)
 	return self:tap("cancel", delayMs)
 end
 
---- @param action string "confirm"|"cancel"|"neverAgain"
+--- @param action string "confirm"|"cancel"
 --- @param delayMs number|nil
 --- @return boolean
 --- @return string|nil
 function Dialog:tap(action, delayMs)
 	delayMs = delayMs or 800
-	if action == "neverAgain" then
-		if self:tapNeverAgain(delayMs) then
-			return true
-		end
-		return false, "no_never_again_btn"
+	if action ~= "confirm" and action ~= "cancel" then
+		Logger.warn(self.tag .. " 无效 action=" .. tostring(action))
+		return false, "invalid_action"
 	end
 
 	local btn
@@ -366,7 +368,8 @@ function Dialog.resolveUntilIdle(candidates, opts)
 	local lastReason = nil
 
 	while nowMs() < startMs + timeoutMs do
-		Guard.sleep(intervalMs, intervalMs)
+		-- 弹窗消解过程保持原子，不再触发 guard 扫描，避免嵌套处理
+		sleep(intervalMs)
 
 		local hit = findFirstVisibleCandidate(sorted)
 		if hit then
@@ -385,7 +388,7 @@ function Dialog.resolveUntilIdle(candidates, opts)
 			handled = handled + 1
 			names[#names + 1] = hit.name
 			Logger.info(tag .. " resolveUntilIdle 已处理 [" .. hit.name .. "] " .. handled .. "/" .. tostring(maxHandled or "∞"))
-			if maxHandled and handled >= maxHandled then
+			if maxHandled and maxHandled > 0 and handled >= maxHandled then
 				break
 			end
 		else

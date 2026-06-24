@@ -18,6 +18,7 @@ local TAG = "[矿山开采]"
 local OreVeinCardsFeatures = MineFeatureLib.oreVeinCards()
 
 local DEFAULT_CARD_PRIORITY = {
+	"butterAmber" ,
 	"amberFossil" ,
 	"sugarOre" ,
 	"purpleFossil" ,

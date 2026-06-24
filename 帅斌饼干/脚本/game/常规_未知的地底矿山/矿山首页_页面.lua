@@ -31,6 +31,10 @@ function MineHomePage.tapMining()
 	Touch.tapArea(mineHomeFeatures.miningBtn , 1000)
 end
 
+function MineHomePage.tapBattleBtn()
+	Touch.tapArea(mineHomeFeatures.battleBtn , 1000)
+end
+
 function MineHomePage.tapBack()
 	Touch.tapArea(mineHomeFeatures.backBtn , 1000)
 end

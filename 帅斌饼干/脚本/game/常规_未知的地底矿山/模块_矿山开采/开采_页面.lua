@@ -385,16 +385,18 @@ function MiningPage.autoSelectCookieAndStart()
 	Touch.tapArea(startBtn , 500)
 
 	local cookieDialog = Dialog.new(MiningFeatures.dialogConfirmCookie , { tag = TAG })
-	local ok , reason = cookieDialog:handle({
-		mode = "flow" ,
-		action = "confirm" ,
-		neverAgain = true ,
-		waitAppearMs = 1500 ,
-		waitGoneMs = 3000 ,
-		required = false ,
-	})
+	local countWarningDialog = Dialog.new(MiningFeatures.dialogCookieCountWarning , { tag = TAG })
+
+	-- 两个弹窗出现顺序未知，使用 resolveUntilIdle 处理
+	local ok , summary = Dialog.resolveUntilIdle({
+		{ dialog = cookieDialog , name = "confirmCookie" , priority = 10 ,
+		  opts = { action = "confirm" , neverAgain = true , waitGoneMs = 2000 , intervalMs = 300 } } ,
+		{ dialog = countWarningDialog , name = "cookieCountWarning" , priority = 10 ,
+		  opts = { action = "confirm" , neverAgain = true , waitGoneMs = 2000 , intervalMs = 300 } } ,
+	} , { timeoutMs = 8000 , minWaitMs = 500 , settleMs = 800 , maxHandled = 2 , tag = TAG })
+
 	if not ok then
-		Logger.warn(TAG .. " 确认消耗饼干弹窗处理失败 | " .. tostring(reason))
+		Logger.warn(TAG .. " 饼干弹窗处理失败 | " .. tostring(summary and summary.reason))
 		return false
 	end
 	return true

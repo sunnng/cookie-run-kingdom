@@ -10,11 +10,17 @@ local Logger = require("lib.logger")
 
 local Guard = {}
 local traps = {}
+local sortedCache = nil
 
 local TAG = "[Guard]"
 
+local function invalidateSortedCache()
+	sortedCache = nil
+end
+
 function Guard.register(name, feature, handler, priority)
 	traps[name] = { f = feature, h = handler, p = priority or 0 }
+	invalidateSortedCache()
 	Logger.info(string.format(TAG .. " 注册 %s priority=%d" , name , priority or 0))
 end
 
@@ -27,6 +33,7 @@ function Guard.clear()
 		Logger.debug(TAG .. " 清空 " .. n .. " 个 trap")
 	end
 	traps = {}
+	invalidateSortedCache()
 end
 
 --- @return number
@@ -39,6 +46,9 @@ function Guard.trapCount()
 end
 
 local function sortedTraps()
+	if sortedCache then
+		return sortedCache
+	end
 	local list = {}
 	for name, trap in pairs(traps) do
 		list[#list + 1] = { name = name, trap = trap }
@@ -49,6 +59,7 @@ local function sortedTraps()
 		end
 		return a.trap.p > b.trap.p
 	end)
+	sortedCache = list
 	return list
 end
 

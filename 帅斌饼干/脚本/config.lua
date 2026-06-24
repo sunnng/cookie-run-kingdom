@@ -33,7 +33,7 @@ local STATIC = {
 		BASE_URL = "http://101.35.246.76:7011/usr/pubg-account/yuan" ,
 		INFO_FILE = "update.txt" ,
 		PACKAGE_FILE = "sb.lrj" ,
-		VERSION = "0.0.12" ,
+		VERSION = "0.0.13" ,
 		VERIFY_MD5 = false ,
 		DOWNLOAD_DIR = "/sdcard/Download/" ,
 		COUNTDOWN_SEC = 3 ,
@@ -98,12 +98,24 @@ local STATIC = {
 			-- 开采选卡优先级（键名同矿山_特征库.oreVeinCards）
 			miningIntervalSec = 1200 , -- 开采完成后再次调度间隔（20分钟）
 			miningOreCards = {
+				"butterAmber" ,
 				"amberFossil" ,
 				"sugarOre" ,
 				"purpleFossil" ,
 				"emeraldFossil" ,
 				"flourStone" ,
 			} ,
+			-- 矿山战斗配置
+			battleEnabled = false ,
+			battleIntervalSec = 21600 , -- 战斗检测间隔，默认 6 小时
+			battleSoulStones = {
+				"妖精王" ,
+				"莓果" ,
+				"雷神武将" ,
+			} ,
+			-- 解除洋菜冻配置
+			jellyEnabled = false ,
+			jellyIntervalSec = 3600 , -- 完成后冷却间隔，默认 1 小时
 		} ,
 		biscuit = {
 			enabled = false ,
@@ -139,6 +151,9 @@ local STATIC = {
 			maxBattles = nil , -- nil 表示不限次数
 			autoBuyCount = 0 ,
 			trophyDiff = 0 ,
+		} ,
+		starlight = {
+			enabled = false ,
 		} ,
 	} ,
 }

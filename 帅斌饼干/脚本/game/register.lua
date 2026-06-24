@@ -14,6 +14,8 @@ local Dialog = require("lib.dialog")
 
 local MineTask = require("game.常规_未知的地底矿山.模块_矿山勘查.勘查_任务")
 local MiningTask = require("game.常规_未知的地底矿山.模块_矿山开采.开采_任务")
+local BattleTask = require("game.常规_未知的地底矿山.模块_矿山战斗.战斗_任务")
+local BattleSession = require("game.常规_未知的地底矿山.模块_矿山战斗.战斗_会话")
 local MiningPage = require("game.常规_未知的地底矿山.模块_矿山开采.开采_页面")
 local BiscuitTask = require("game.功能_洗脆饼.task")
 local SquareTask = require("game.常规_布谷鸟广场.广场_任务")
@@ -26,6 +28,10 @@ local ArenaSession = require("game.常规_王国竞技场.竞技场_会话")
 local Session = require("game.常规_未知的地底矿山.模块_矿山勘查.勘查_会话")
 local MiningSession = require("game.常规_未知的地底矿山.模块_矿山开采.开采_会话")
 local PopupPage = require("game.通用_弹窗.page")
+local StarlightTask = require("game.常规_梦幻繁星岛.繁星岛_任务")
+local StarlightSession = require("game.常规_梦幻繁星岛.繁星岛_会话")
+local JellyTask = require("game.常规_未知的地底矿山.模块_解除洋菜冻.解除洋菜冻_任务")
+local JellySession = require("game.常规_未知的地底矿山.模块_解除洋菜冻.解除洋菜冻_会话")
 
 local Register = {}
 
@@ -57,6 +63,12 @@ local function isMineSchedulerIdle()
 	if mineCfg.miningEnabled == true then
 		local canMining = MiningSession.checkReady()
 		if canMining then
+			return false
+		end
+	end
+	if mineCfg.jellyEnabled == true then
+		local canJelly, _ = JellySession.checkReady()
+		if canJelly then
 			return false
 		end
 	end
@@ -147,6 +159,63 @@ function Register.all()
 			end
 		end)
 
+	Scheduler.add("矿山战斗",
+		function()
+			local mineCfg = UserConfig.get("mine")
+			if mineCfg.battleEnabled ~= true then
+				return false
+			end
+			local interval = mineCfg.battleIntervalSec or 21600
+			local remain = BattleSession.getTimeUntilNext(interval)
+			if remain > 0 then
+				StatusHud.setTask("矿山战斗" , string.format("冷却等待 %ds" , remain))
+				Logger.info("[Register] 矿山战斗冷却中 " .. remain .. "s")
+				return false
+			end
+			return true
+		end,
+		function()
+			if SquareRoute.isSquareContext() then
+				Logger.info("[Register] 矿山战斗前离开广场")
+				if not SquareTask.leaveForOtherTask() then
+					Logger.warn("[Register] 离开广场失败，跳过矿山战斗")
+					return
+				end
+			end
+			Logger.info("[Register] 开始矿山战斗任务")
+			if BattleTask.run() then
+				Logger.info("[Register] 矿山战斗完成")
+			end
+		end)
+
+	Scheduler.add("解除洋菜冻",
+		function()
+			local mineCfg = UserConfig.get("mine")
+			if mineCfg.jellyEnabled ~= true then
+				return false
+			end
+			local canRun , remain = JellySession.checkReady()
+			if not canRun then
+				StatusHud.setTask("解除洋菜冻" , string.format("冷却等待 %ds" , remain))
+				Logger.info("[Register] 解除洋菜冻冷却中 " .. remain .. "s")
+				return false
+			end
+			return true
+		end,
+		function()
+			if SquareRoute.isSquareContext() then
+				Logger.info("[Register] 解除洋菜冻前离开广场")
+				if not SquareTask.leaveForOtherTask() then
+					Logger.warn("[Register] 离开广场失败，跳过解除洋菜冻")
+					return
+				end
+			end
+			Logger.info("[Register] 开始解除洋菜冻任务")
+			if JellyTask.run() then
+				Logger.info("[Register] 解除洋菜冻完成")
+			end
+		end)
+
 	Scheduler.add("海滩交易所",
 		function()
 			local market = UserConfig.get("seasideMarket")
@@ -213,6 +282,34 @@ function Register.all()
 			end
 			Logger.info("[Register] 开始王国竞技场任务")
 			ArenaTask.run()
+		end)
+
+	Scheduler.add("梦幻繁星岛",
+		function()
+			local starlight = UserConfig.get("starlight")
+			if not starlight or starlight.enabled ~= true then
+				return false
+			end
+			if StarlightSession.isDoneToday() then
+				return false
+			end
+			if not isMineSchedulerIdle() then
+				updateMineWaitHud("矿山待执行")
+				Logger.info("[Register] 矿山待执行，跳过梦幻繁星岛")
+				return false
+			end
+			return true
+		end,
+		function()
+			if SquareRoute.isSquareContext() then
+				Logger.info("[Register] 梦幻繁星岛前离开广场")
+				if not SquareTask.leaveForOtherTask() then
+					Logger.warn("[Register] 离开广场失败，跳过梦幻繁星岛")
+					return
+				end
+			end
+			Logger.info("[Register] 开始梦幻繁星岛任务")
+			StarlightTask.run()
 		end)
 
 	Scheduler.add("布谷鸟广场",

@@ -232,6 +232,35 @@ function StatusHud.setMineMining(opts)
     render(line(table.unpack(parts)))
 end
 
+local BATTLE_STATE_LABEL = {
+    detect = "识别页面" ,
+    navigate = "导航" ,
+    battleLoop = "扫描战斗卡" ,
+    quickBattle = "快转" ,
+    exit = "回城" ,
+}
+
+--- 矿山战斗专用
+--- @param opts table state?, retry?, extra?
+function StatusHud.setMineBattle(opts)
+    opts = opts or {}
+    local parts = { PREFIX , "矿山战斗" }
+
+    if opts.state then
+        parts[#parts + 1] = BATTLE_STATE_LABEL[opts.state] or opts.state
+    end
+
+    if opts.retry and opts.retry > 0 then
+        parts[#parts + 1] = string.format("重试%d" , opts.retry)
+    end
+
+    if opts.extra and opts.extra ~= "" then
+        parts[#parts + 1] = opts.extra
+    end
+
+    render(line(table.unpack(parts)))
+end
+
 --- 矿山勘查 + 开采 + 海滩补货同时等待（调度跳过 / 空闲挂机）
 --- @param opts table surveySec?, miningSec?, marketSec?, target?, extra?
 function StatusHud.setMineWait(opts)
