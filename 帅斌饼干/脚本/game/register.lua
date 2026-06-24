@@ -44,7 +44,6 @@ local function updateMineWaitHud(extra)
 		StatusHud.setMineWait({
 			surveySec = surveySec > 0 and surveySec or nil ,
 			miningSec = miningSec > 0 and miningSec or nil ,
-			target = mineCfg.targetFloor ,
 			extra = extra ,
 		})
 	end

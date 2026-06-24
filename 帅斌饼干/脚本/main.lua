@@ -3,8 +3,4 @@
 -- =============================================================================
 --[===[local Touch = require("lib.touch")
 ]===]
---[===[local Ocr = require("lib.ocr")
-Ocr.init()
-print(Ocr.scan({274,586,1328,669}))]===]
-
 require("ui.app").init()

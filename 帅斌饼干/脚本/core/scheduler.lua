@@ -46,7 +46,7 @@ function Scheduler.run(stopOnError)
 		elseif condResult then
 			hasWork = true
 			ran = ran + 1
-			StatusHud.setTask(task.name , "执行中…")
+			StatusHud.setTask(task.name , "…")
 			Logger.info(TAG .. " [执行] " .. task.name .. " 开始")
 
 			local t0 = os.clock()

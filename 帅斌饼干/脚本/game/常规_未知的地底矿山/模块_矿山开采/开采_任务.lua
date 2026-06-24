@@ -134,6 +134,9 @@ local function miningPageScan(sm)
 	elseif MiningPage.tapFreeSlot() then
 		Logger.info(TAG .. " [miningPageScan] 有空闲栏位 → selectMineCard")
 		return "selectMineCard"
+	elseif MiningPage.wasNoMineCard() then
+		Logger.info(TAG .. " [miningPageScan] 矿脉卡清单无矿卡，准备回城结束")
+		return "noCardReturn"
 	end
 	
 	-- 3. 选择可开采槽位
@@ -306,6 +309,17 @@ local function selectMineCard(sm)
 	return "startMining"
 end
 
+local function noCardReturn(sm)
+	updateHud(sm , { extra = "无矿卡可选，回城结束…" })
+	Logger.info(TAG .. " [noCardReturn] 矿脉卡清单无矿卡，准备回城")
+	if not Route.returnToKingdom() then
+		Logger.warn(TAG .. " [noCardReturn] 回王国首页失败")
+		return false , "矿山开采[noCardReturn] 回王国首页失败"
+	end
+	MiningSession.enterBusyWait()
+	return StateMachine.DONE
+end
+
 local function done(sm)
 	updateHud(sm , { extra = "本轮结束回城…" })
 	-- 结束前复查一次，避免识别抖动导致误判全忙。
@@ -343,6 +357,7 @@ local handlers = {
 	confirmRewards = confirmRewards ,
 	startMining = startMining ,
 	selectMineCard = selectMineCard ,
+	noCardReturn = noCardReturn ,
 	done = done ,
 }
 

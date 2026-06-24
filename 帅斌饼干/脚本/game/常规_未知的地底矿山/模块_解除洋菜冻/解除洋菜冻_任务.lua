@@ -89,21 +89,18 @@ local function processPage(sm)
     if configPoint then
         Logger.info(TAG .. " [processPage] 找到配置按钮，进入配置界面")
         JellyPage.tapConfigBtn(configPoint)
-        if not JellyPage.waitConfigPage(30000, 500) then
-            Logger.warn(TAG .. " [processPage] 等待配置界面超时")
-            return StateMachine.RETRY
+        if not JellyPage.waitConfigPage(2000, 300) then
+            Logger.info(TAG .. " [processPage] 点击配置后未进入配置洋菜冻页面，无可选择洋菜冻，结束任务")
+            sm.ctx.jellyRemainSec = nil
+            return "returnHome"
         end
         return "configJelly"
     end
 
-    -- 3. 无配置按钮：识别剩余时间并进入等待
+    -- 3. 无配置按钮：识别剩余时间
     Logger.info(TAG .. " [processPage] 未找到配置按钮，准备识别剩余时间")
     local remainSec = JellyPage.readRemainTime()
-    if remainSec and remainSec > 0 then
-        JellySession.enterWait(remainSec)
-    else
-        JellySession.enterWait()
-    end
+    sm.ctx.jellyRemainSec = remainSec
     return "returnHome"
 end
 
@@ -123,6 +120,7 @@ local function configJelly(sm)
 
     -- 不可选择：返回解除洋菜冻页面，再走返回链结束
     Logger.info(TAG .. " [configJelly] 不可选择，返回解除洋菜冻页面")
+    sm.ctx.jellyRemainSec = nil
     JellyPage.tapConfigBack()
     if not JellyPage.waitJellyPage(30000, 500) then
         Logger.warn(TAG .. " [configJelly] 返回后等待解除洋菜冻页面超时")
@@ -133,6 +131,14 @@ end
 
 local function returnHome(sm)
     Logger.info(TAG .. " [returnHome] 返回王国首页")
+
+    -- 统一记录冷却，避免任务立即被再次调度
+    local remainSec = sm.ctx and sm.ctx.jellyRemainSec
+    if remainSec and remainSec > 0 then
+        JellySession.enterWait(remainSec)
+    else
+        JellySession.enterWait()
+    end
 
     -- 解除洋菜冻页 → 矿山首页
     if JellyPage.isJellyPage() then
@@ -182,12 +188,14 @@ function JellyTask.run()
     Logger.info(TAG .. " 任务启动 | jellyEnabled=" .. tostring(cfg.jellyEnabled)
         .. " jellyIntervalSec=" .. tostring(cfg.jellyIntervalSec))
 
+    local ctx = {}
     local sm = StateMachine.new()
     sm:init("detect", {
         maxRetry = 3,
         timeout = 1800,
         retryIntervalMs = 1000,
     })
+    sm.ctx = ctx
 
     local ok, err = sm:run(handlers, {
         interval = 500,

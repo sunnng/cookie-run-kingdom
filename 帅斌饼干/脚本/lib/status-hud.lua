@@ -261,11 +261,11 @@ function StatusHud.setMineBattle(opts)
     render(line(table.unpack(parts)))
 end
 
---- 矿山勘查 + 开采 + 海滩补货同时等待（调度跳过 / 空闲挂机）
---- @param opts table surveySec?, miningSec?, marketSec?, target?, extra?
+--- 各任务等待状态精简显示（调度跳过 / 空闲挂机）
+--- @param opts table surveySec?, miningSec?, marketSec?, extra?
 function StatusHud.setMineWait(opts)
     opts = opts or {}
-    local parts = { PREFIX , "矿山" }
+    local parts = { PREFIX , "等待" }
 
     local surveySec = opts.surveySec
     local miningSec = opts.miningSec
@@ -275,27 +275,23 @@ function StatusHud.setMineWait(opts)
     local hasMarket = type(marketSec) == "number" and marketSec > 0
 
     if hasSurvey then
-        if opts.target then
-            parts[#parts + 1] = string.format("勘查远距 %ds(目标%d层)" , math.floor(surveySec) , opts.target)
-        else
-            parts[#parts + 1] = string.format("勘查远距 %ds" , math.floor(surveySec))
-        end
+        parts[#parts + 1] = string.format("勘查%d" , math.floor(surveySec))
     end
 
     if hasMining then
-        parts[#parts + 1] = string.format("开采 %ds" , math.floor(miningSec))
+        parts[#parts + 1] = string.format("开采%d" , math.floor(miningSec))
     end
 
     if hasMarket then
-        parts[#parts + 1] = string.format("海滩补货 %ds" , math.floor(marketSec))
+        parts[#parts + 1] = string.format("海滩%d" , math.floor(marketSec))
     end
 
     if opts.extra and opts.extra ~= "" then
         parts[#parts + 1] = opts.extra
     end
 
-    if not hasSurvey and not hasMining and not hasMarket then
-        render(line(PREFIX , opts.extra or "等待"))
+    if not hasSurvey and not hasMining and not hasMarket and (not opts.extra or opts.extra == "") then
+        render(line(PREFIX , "等待任务"))
         return
     end
 

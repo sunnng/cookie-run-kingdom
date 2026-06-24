@@ -12,7 +12,7 @@ local MiningConfigPanel = {}
 
 --- 与特征库 oreVeinCards 键名一致；列表顺序即优先顺序
 local ORE_OPTIONS = {
-	{ key = "butterAmber" , label = "奶油琥珀石" } ,
+	{ key = "butterAmber" , label = "奶油琥珀石(不建议勾选,建议手动开采)" } ,
 	{ key = "amberFossil" , label = "琥珀化石（黄）" } ,
 	{ key = "sugarOre" , label = "糖矿石（蓝）" } ,
 	{ key = "purpleFossil" , label = "紫化石（紫）" } ,

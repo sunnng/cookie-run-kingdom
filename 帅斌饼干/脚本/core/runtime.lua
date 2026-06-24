@@ -22,19 +22,19 @@ local Runtime = {}
 
 local TAG = "[Runtime]"
 
---- 拼装矿山等待 HUD 的 extra 文本
+--- 拼装矿山等待 HUD 的 extra 文本（精简）
 local function getMineWaitExtraText(arenaRemain, battleRemain)
 	local parts = {}
 	if battleRemain > 0 then
-		parts[#parts + 1] = "战斗 " .. battleRemain .. "s"
+		parts[#parts + 1] = "战斗" .. math.floor(battleRemain)
 	end
 	if arenaRemain > 0 then
-		parts[#parts + 1] = "竞技场 " .. arenaRemain .. "s"
+		parts[#parts + 1] = "竞技" .. math.floor(arenaRemain)
 	end
 	if #parts == 0 then
-		return "挂机中"
+		return ""
 	end
-	return table.concat(parts, " · ")
+	return table.concat(parts, " ")
 end
 
 --- 业务注入点，由 game.register 赋值
@@ -93,7 +93,7 @@ function Runtime.run()
 			if waitRemain > 0 then
 				local idleSec = math.max(1 , math.floor(idleMs / 1000))
 				Logger.info(string.format(
-				TAG .. " [idle] 等待 剩余%ds（勘查%d 开采%d 战斗%d 海滩%d 竞技场%d）本轮tick %ds" ,
+				TAG .. " [idle] 等待 剩余%ds（勘%d 采%d 战%d 海%d 竞%d）tick %ds" ,
 				waitRemain , farRemain , miningRemain , battleRemain , marketRemain , arenaRemain , idleSec
 				))
 				for _ = 1 , idleSec do
@@ -111,7 +111,6 @@ function Runtime.run()
 						surveySec = farRemain > 0 and farRemain or nil ,
 						miningSec = miningRemain > 0 and miningRemain or nil ,
 						marketSec = marketRemain > 0 and marketRemain or nil ,
-						target = mineCfg.targetFloor ,
 						extra = getMineWaitExtraText(arenaRemain , battleRemain) ,
 					})
 					Guard.sleep(1000 , guardStep)

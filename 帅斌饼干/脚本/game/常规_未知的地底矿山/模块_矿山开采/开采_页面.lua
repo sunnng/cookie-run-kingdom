@@ -3,6 +3,7 @@ local Touch = require("lib.touch")
 local Ocr = require("lib.ocr")
 local Logger = require("lib.logger")
 local Dialog = require("lib.dialog")
+local Guard = require("core.guard")
 
 local MineFeatureLib = require("game.常规_未知的地底矿山.矿山_特征库")
 local MineHomePage = require("game.常规_未知的地底矿山.矿山首页_页面")
@@ -28,6 +29,8 @@ local SELECTED_NEAR_RADIUS = 120
 local MAX_SWIPES = 20
 local TAP_Y_OFFSET = - 200
 local TAP_SETTLE_MS = 450
+
+local lastNoMineCard = false
 
 local function hasFeature(feature)
 	return type(feature) == "table" and feature[1] ~= nil
@@ -100,6 +103,8 @@ local function tapCardIfQuotaIncreases(pt , targetCur)
 	return false
 end
 
+local NO_MINE_CARD_HINTS = { "没有可选择的矿脉卡" , "没有" }
+
 local function ocrRectHasText(rect)
 	local r = Ocr.scan(rect)
 	if not r then
@@ -116,6 +121,36 @@ local function ocrRectHasText(rect)
 	return false
 end
 
+--- 检测矿脉卡清单是否提示没有矿卡
+--- @return boolean
+local function hasNoMineCardHint(text)
+	if type(text) ~= "string" or text == "" then
+		return false
+	end
+	for _ , hint in ipairs(NO_MINE_CARD_HINTS) do
+		if text:find(hint , 1 , true) then
+			return true
+		end
+	end
+	return false
+end
+
+function MiningPage.hasNoMineCardInList()
+	if not MiningFeatures.noMineCardOcr then
+		return false
+	end
+	local r = Ocr.scan(MiningFeatures.noMineCardOcr)
+	if not r then
+		return false
+	end
+	local text = r.text or ""
+	if hasNoMineCardHint(text) then
+		Logger.info(TAG .. " noMineCardOcr 检测到无矿卡提示: " .. text)
+		return true
+	end
+	return false
+end
+
 local function swipeCardList(direction)
 	direction = direction or "left"
 	local opts = direction == "right" and reverseSwipe(SWIPE_CARD_LIST) or SWIPE_CARD_LIST
@@ -127,7 +162,7 @@ local function swipeCardList(direction)
 	
 	touchDown(id , math.floor(opts.x1) , math.floor(opts.y1))
 	if downMs > 0 then
-		sleep(downMs)
+		Guard.sleep(downMs , 100)
 	end
 	
 	local segMs = math.max(1 , math.floor(moveMs / steps))
@@ -139,7 +174,7 @@ local function swipeCardList(direction)
 	end
 	
 	if holdMs > 0 then
-		sleep(holdMs)
+		Guard.sleep(holdMs , 100)
 	end
 	
 	local edgeRect = direction == "right"
@@ -151,7 +186,7 @@ local function swipeCardList(direction)
 		Logger.info(TAG .. " 卡列表" .. (direction == "right" and "左缘" or "右缘") .. "无文字，已到尽头")
 		return false
 	end
-	sleep(500)
+	Guard.sleep(500 , 100)
 	return true
 end
 
@@ -232,16 +267,45 @@ function MiningPage.hasFreeSlot()
 end
 
 function MiningPage.enterMultiSelect()
+	lastNoMineCard = false
 	if not MiningFeatures.multiSelectBtn then
 		Logger.warn(TAG .. " multiSelectBtn 未配置")
 		return false
 	end
+
 	local ocrRect = MiningFeatures.multiSelectOcr or MiningFeatures.multiSelectBtn
-	if not Ocr.wait("选择多个" , ocrRect , 30000 , 500) then
-		return false
+	local deadline = tickCount() + 30000
+	local interval = 500
+	while tickCount() < deadline do
+		-- 优先检查无矿卡提示（无矿卡时不会出现"选择多个"）
+		if MiningPage.hasNoMineCardInList() then
+			Logger.info(TAG .. " 矿脉卡清单提示无矿卡，退出选卡页面")
+			local backBtn = MiningFeatures.cardSelect and MiningFeatures.cardSelect.backBtn or MiningFeatures.backBtn
+			Touch.tapArea(backBtn , 1000)
+			-- 页面层级：矿脉卡选择页 → 矿山开采首页
+			if MiningPage.waitMiningPage(30000 , 500) then
+				lastNoMineCard = true
+			else
+				Logger.warn(TAG .. " 退出选卡页面后未回到矿山开采首页")
+			end
+			return false
+		end
+
+		-- 检查是否出现"选择多个"
+		if Ocr.has("选择多个" , ocrRect) then
+			Touch.tapArea(MiningFeatures.multiSelectBtn , 1000)
+			return true
+		end
+
+		Guard.sleep(interval , interval)
 	end
-	Touch.tapArea(MiningFeatures.multiSelectBtn , 1000)
-	return true
+
+	Logger.warn(TAG .. " enterMultiSelect 等待选卡页面超时")
+	return false
+end
+
+function MiningPage.wasNoMineCard()
+	return lastNoMineCard
 end
 
 function MiningPage.tapFreeSlot()
