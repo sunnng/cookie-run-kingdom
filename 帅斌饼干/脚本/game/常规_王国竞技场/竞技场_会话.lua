@@ -30,6 +30,14 @@ function Session.totalBattles()
 	return (d.wins or 0) + (d.losses or 0) + (d.draws or 0)
 end
 
+--- 是否已达到用户设置的最大战斗次数
+--- @param cfg table arena 配置（含 maxBattles）
+--- @return boolean
+function Session.isReachMaxBattles(cfg)
+	local maxBattles = cfg and cfg.maxBattles
+	return maxBattles and maxBattles > 0 and Session.totalBattles() >= maxBattles
+end
+
 function Session.describe()
 	local d = Session.get()
 	local total = Session.totalBattles()
@@ -37,6 +45,21 @@ function Session.describe()
 	return string.format(
 		"战斗%d 胜%d 负%d 平%d 胜率%.1f%% 门票%d 买票%d 奖杯%d" ,
 		total , d.wins or 0 , d.losses or 0 , d.draws or 0 , rate ,
+		d.tickets or 0 , d.buyCount or 0 , d.trophies or 0
+	)
+end
+
+--- 生成顶部 HUD 显示的完整竞技场比赛统计
+--- @param cfg table arena 配置（含 maxBattles）
+--- @return string
+function Session.hudText(cfg)
+	local d = Session.get()
+	local total = Session.totalBattles()
+	local cap = cfg and cfg.maxBattles and tostring(cfg.maxBattles) or "∞"
+	local rate = total > 0 and (d.wins or 0) / total * 100 or 0
+	return string.format(
+		"总%d/%s 胜%d 负%d 平%d 胜率%.1f%% 门票%d 买票%d 奖杯%d" ,
+		total , cap , d.wins or 0 , d.losses or 0 , d.draws or 0 , rate ,
 		d.tickets or 0 , d.buyCount or 0 , d.trophies or 0
 	)
 end

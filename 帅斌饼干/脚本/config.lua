@@ -33,7 +33,7 @@ local STATIC = {
 		BASE_URL = "http://101.35.246.76:7011/usr/pubg-account/yuan" ,
 		INFO_FILE = "update.txt" ,
 		PACKAGE_FILE = "sb.lrj" ,
-		VERSION = "0.0.14" ,
+		VERSION = "0.0.16" ,
 		VERIFY_MD5 = false ,
 		DOWNLOAD_DIR = "/sdcard/Download/" ,
 		COUNTDOWN_SEC = 3 ,
@@ -51,7 +51,7 @@ local STATIC = {
 	} ,
 	-- TomatoOCR（lib.ocr）
 	OCR = {
-		LICENSE = "WNPUFLZ0MN3BYVOG2WBPOXD8GVKB7IOL|8Wb1QN63dgepIeXngwzbBH3g" ,
+		LICENSE = "WNPUFLZ0MN3BYVOG2WBPOXD8GVKB7IOL|bYTsbVaQbNebOeYVpJlHX2Aa" ,
 		REMARK = "" ,
 		ENGINE = {
 			REC_TYPE = "ch-3.0" ,

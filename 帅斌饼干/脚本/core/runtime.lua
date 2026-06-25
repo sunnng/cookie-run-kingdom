@@ -22,14 +22,14 @@ local Runtime = {}
 
 local TAG = "[Runtime]"
 
---- 拼装矿山等待 HUD 的 extra 文本（精简）
-local function getMineWaitExtraText(arenaRemain, battleRemain)
+--- 拼装等待 HUD 的 extra 文本（精简）
+local function getWaitExtraText(arenaCfg, arenaRemain, battleRemain)
 	local parts = {}
 	if battleRemain > 0 then
 		parts[#parts + 1] = "战斗" .. math.floor(battleRemain)
 	end
-	if arenaRemain > 0 then
-		parts[#parts + 1] = "竞技" .. math.floor(arenaRemain)
+	if arenaRemain > 0 and arenaCfg then
+		parts[#parts + 1] = string.format("竞技场%ds %s" , math.floor(arenaRemain) , ArenaSession.hudText(arenaCfg))
 	end
 	if #parts == 0 then
 		return ""
@@ -107,12 +107,21 @@ function Runtime.run()
 						Logger.info(TAG .. " [idle] 等待已到期")
 						break
 					end
-					StatusHud.setMineWait({
-						surveySec = farRemain > 0 and farRemain or nil ,
-						miningSec = miningRemain > 0 and miningRemain or nil ,
-						marketSec = marketRemain > 0 and marketRemain or nil ,
-						extra = getMineWaitExtraText(arenaRemain , battleRemain) ,
-					})
+					local waitParts = {}
+					if farRemain > 0 then
+						waitParts[#waitParts + 1] = string.format("勘查%d" , math.floor(farRemain))
+					end
+					if miningRemain > 0 then
+						waitParts[#waitParts + 1] = string.format("开采%d" , math.floor(miningRemain))
+					end
+					if marketRemain > 0 then
+						waitParts[#waitParts + 1] = string.format("海滩%d" , math.floor(marketRemain))
+					end
+					local arenaExtra = getWaitExtraText(arenaCfg , arenaRemain , battleRemain)
+					if arenaExtra ~= "" then
+						waitParts[#waitParts + 1] = arenaExtra
+					end
+					StatusHud.set(nil , table.concat(waitParts , " · "))
 					Guard.sleep(1000 , guardStep)
 				end
 			else

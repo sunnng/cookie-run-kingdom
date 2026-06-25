@@ -26,6 +26,7 @@ local SOUL_STONE_OPTIONS = {
 		{ key = "雷神武将" , label = "雷神武将" } ,
 		{ key = "冰霜女王" , label = "冰霜女王" } ,
 		{ key = "海妖精" , label = "海妖精" } ,
+		{ key = "风箭手" , label = "风箭手" } ,
 	} } ,
 	{ name = "上古" , options = {
 		{ key = "莓果" , label = "莓果" } ,

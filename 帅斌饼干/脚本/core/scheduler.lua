@@ -59,6 +59,7 @@ function Scheduler.run(stopOnError)
 					task.name , elapsed , tostring(err)
 				))
 				if stopOnError then
+					StatusHud.setIdle()
 					return hasWork , false
 				end
 			else

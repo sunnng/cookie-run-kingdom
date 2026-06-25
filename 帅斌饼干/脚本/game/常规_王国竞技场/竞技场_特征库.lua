@@ -10,7 +10,7 @@ return {
 		medalTicketOcr = {876 , 20 , 1270 , 77} ,
 		trophyOcr = {177 , 733 , 359 , 777} ,
 		refreshOcr = {1345 , 733 , 1549 , 777} ,
-		freeRefreshOcr = {1361 , 734 , 1541 , 774} ,
+		freeRefreshOcr = {1332,735,1558,773} ,
 		freeRefreshTap = {1421 , 758} ,
 		buyTicketBtn = {1213 , 48} ,
 		buyTicketSlider = {605 , 635 , 731 , 635} ,
@@ -19,9 +19,8 @@ return {
 	opponent = {
 		findDef = {560 , 478 , 1589 , 556 , "1cc2e2-101010" , "-1|7|fbcf00-101010|-1|-12|c65d00-101010|-11|-2|e32840-101010|1|18|fedd00-101010" , 0 , 0.95} ,
 		baseSite = {643 , 531} ,
-		powerRect = {665 , 484 , 803 , 512} ,
 		trophyRect = {664 , 521 , 806 , 556} ,
-		resultOffset = {83 , -109} ,
+		resultOffset = {83 , - 109} ,
 		resultColors = { win = "ccff33" , draw = "66ffff" , lose = "ff9999" } ,
 		numberOcr = {
 			recType = "number" ,
@@ -29,7 +28,7 @@ return {
 			detUnclipRatio = 1.9 ,
 			recScoreThreshold = 0.2 ,
 			binaryThresh = 130 ,
-			runMode = "slow" ,
+			runMode = "fast" ,
 			filterBg = "black" ,
 		} ,
 	} ,
@@ -47,19 +46,13 @@ return {
 			confirm = {960 , 636} ,
 		} ,
 	} ,
-	battle = {
-		startFeature = {"385|30|42cd0b-101010,1211|29|7c0cfb-101010,1558|44|cbcbcb-101010,1578|45|c1c1bf-101010" , 0.95} ,
-	} ,
 	settlement = {
 		feature = {"1454|46|333333-101010,1451|49|ffffff-101010,1442|49|6786bd-101010,1467|56|1b2850-101010,835|94|ffff66-101010" , 0.9} ,
 		resultOcr = {736 , 118 , 881 , 176} ,
 		leaveFeature = {"1523|811|0ca6df-101010,1158|809|f67b4b-101010,1532|38|34a0e4-101010,1149|781|ffffff-101010" , 0.9} ,
-		leaveRetryTap = {1460 , 812} ,
-		leaveTap = {1464 , 792} ,
-		promotionSkip = {699 , 852} ,
+		leaveBtn = {1424 , 785 , 1457 , 799} ,
 	} ,
 	pagination = {
 		swipeLeft = {1524 , 534 , 877 , 533} ,
-		swipeRight = {877 , 533 , 1524 , 534} ,
 	} ,
 }

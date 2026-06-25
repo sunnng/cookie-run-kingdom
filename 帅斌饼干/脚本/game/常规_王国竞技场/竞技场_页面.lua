@@ -7,162 +7,65 @@ local Ocr = require("lib.ocr")
 local U = require("lib.utils")
 local Guard = require("core.guard")
 local Logger = require("lib.logger")
-local DialogLib = require("lib.dialog")
+local Touch = require("lib.touch")
+local Color = require("lib.color")
 local F = require("game.常规_王国竞技场.竞技场_特征库")
 
 local ArenaPage = {}
 local TAG = "[王国竞技场.页面]"
 
 local function hasLeaveBtn()
-	return cmpColorExT(F.settlement.leaveFeature) == 1
+	return Color.match(F.settlement.leaveFeature)
 end
 
 local function isSettlement()
-	return cmpColorExT(F.settlement.feature) == 1
+	return Color.match(F.settlement.feature)
 end
 
 local function waitFeature(feature , maxWait , interval , label)
 	maxWait = maxWait or 30000
 	interval = interval or 500
 	label = label or "页面"
-	local deadline = tickCount() + maxWait
-	while tickCount() < deadline do
-		if cmpColorExT(feature) == 1 then
-			Logger.debug(TAG .. " 命中 " .. label)
-			return true
-		end
-		Guard.check()
-		sleep(interval)
-	end
-	Logger.warn(TAG .. " 等待 " .. label .. " 超时 " .. maxWait .. "ms")
-	return false
-end
-
-local function waitUntilGone(feature , maxWait , interval , label)
-	maxWait = maxWait or 30000
-	interval = interval or 500
-	label = label or "页面"
-	local deadline = tickCount() + maxWait
-	while tickCount() < deadline do
-		if cmpColorExT(feature) ~= 1 then
-			Logger.debug(TAG .. " 已离开 " .. label)
-			return true
-		end
-		Guard.check()
-		sleep(interval)
-	end
-	Logger.warn(TAG .. " 离开 " .. label .. " 超时 " .. maxWait .. "ms")
-	return false
-end
-
-local function retryTap(x , y , checkFn , maxRetry , checkDelay)
-	maxRetry = maxRetry or 10
-	checkDelay = checkDelay or 800
-	for i = 1 , maxRetry do
-		if checkFn() then
-			return true
-		end
-		tap(x , y)
-		Guard.sleep(checkDelay , 500)
-	end
-	return checkFn()
-end
-
-local function leaveSettlement()
-	if ArenaPage.isLobby() then
-		Logger.info(TAG .. " 已在大厅，跳过离开结算")
-		return true
-	end
-
-	-- 不在结算页且不在大厅时，交给 skipPromotion 处理
-	if not isSettlement() and not hasLeaveBtn() then
-		Logger.info(TAG .. " 不在结算页，跳过 leaveSettlement")
-		return false
-	end
-
-	local leaveRetry = F.settlement.leaveRetryTap
-	local leaveTap = F.settlement.leaveTap
-	local skip = F.settlement.promotionSkip
-
-	Logger.info(TAG .. " 开始离开结算页")
-
-	-- 1. 点击直到出现离开按钮（同时可跳过结算动画）
-	if not retryTap(leaveRetry[1] , leaveRetry[2] , hasLeaveBtn , 60 , 1200) then
-		Logger.warn(TAG .. " 等待离开按钮超时")
-		return ArenaPage.isLobby()
-	end
-
-	-- 2. 点击离开按钮
-	Logger.debug(TAG .. " 检测到离开按钮，点击离开")
-	tap(leaveTap[1] , leaveTap[2])
-	sleep(2000)
-
-	-- 3. 等待回到大厅，期间持续点击跳过升段奖励
-	--    处理：结算 → 大厅，或 结算 → 大厅 → 升段页 → 大厅
-	if retryTap(skip[1] , skip[2] , ArenaPage.isLobby , 60 , 1000) then
-		sleep(1500)
-		if ArenaPage.isLobby() then
-			Logger.info(TAG .. " 已回到竞技场大厅")
-			return true
-		end
-		-- 大厅特征出现后消失（加载慢导致先回大厅再进入升段页），继续第二轮
-		Logger.info(TAG .. " 大厅特征消失，继续跳过升段")
-		if retryTap(skip[1] , skip[2] , ArenaPage.isLobby , 60 , 1000) then
-			Logger.info(TAG .. " 已回到竞技场大厅")
-			return true
-		end
-	end
-
-	Logger.warn(TAG .. " 离开结算超时 lobby=" .. tostring(ArenaPage.isLobby()))
-	return ArenaPage.isLobby()
-end
-
--- 跳过升段奖励逻辑（处理已处于升段页的情况）
-local function skipPromotion()
-	if ArenaPage.isLobby() then
-		Logger.info(TAG .. " 已在大厅，跳过升段奖励")
-		return true
-	end
-
-	local skip = F.settlement.promotionSkip
-	Logger.info(TAG .. " 检查升段奖励/跳过 坐标=(" .. skip[1] .. "," .. skip[2] .. ")")
-
-	-- 第一轮：持续点击跳过坐标，直到出现大厅特征
-	if retryTap(skip[1] , skip[2] , ArenaPage.isLobby , 60 , 1000) then
-		sleep(1500)
-		if ArenaPage.isLobby() then
-			Logger.info(TAG .. " 升段流程结束，已在大厅")
-			return true
-		end
-		-- 大厅特征出现后消失（加载慢导致先回大厅再进入升段页），继续第二轮
-		Logger.info(TAG .. " 大厅特征消失，继续跳过升段")
-		return retryTap(skip[1] , skip[2] , ArenaPage.isLobby , 60 , 1000)
-	end
-
-	Logger.warn(TAG .. " 升段跳过超时 lobby=" .. tostring(ArenaPage.isLobby()))
-	return ArenaPage.isLobby()
-end
-
-function ArenaPage.ensureLobby()
-	if ArenaPage.isLobby() then
-		return true
-	end
-	Logger.info(TAG .. " 尝试恢复到大厅")
-	if isSettlement() or hasLeaveBtn() then
-		leaveSettlement()
-	end
-	if not ArenaPage.isLobby() then
-		skipPromotion()
-	end
-	local ok = ArenaPage.isLobby()
-	if not ok then
-		Logger.warn(TAG .. " 恢复大厅失败")
+	local ok = Color.wait(feature , maxWait , interval)
+	if ok then
+		Logger.debug(TAG .. " 命中 " .. label)
+	else
+		Logger.warn(TAG .. " 等待 " .. label .. " 超时 " .. maxWait .. "ms")
 	end
 	return ok
 end
 
+local function leaveSettlement()
+	-- 防御性编程
+	if ArenaPage.isLobby() then
+		return true
+	end
+	
+	if not isSettlement() and not hasLeaveBtn() then
+		return false
+	end
+	
+	-- 连续点击离开按钮区域
+	if Color.tapUntilMatch(F.settlement.leaveBtn , F.lobby.feature , {timeoutMs = 60000 , intervalMs = 500 , tapDelayMs = 500 , sleepMs = 1200}) then
+		-- 防止先到达大厅,再弹出升段页面
+		if ArenaPage.isLobby() then
+			return true
+		else
+			-- 再次执行
+			if Color.tapUntilMatch(F.settlement.leaveBtn , F.lobby.feature , {timeoutMs = 60000 , intervalMs = 500 , tapDelayMs = 500 , sleepMs = 1200}) then
+				return true
+			else
+				return false
+			end
+		end
+		
+	end
+	
+	return false
+end
+
 function ArenaPage.isLobby()
-	return cmpColorExT(F.lobby.feature) == 1
+	return Color.match(F.lobby.feature)
 end
 
 function ArenaPage.waitLobby(timeoutMs)
@@ -170,73 +73,53 @@ function ArenaPage.waitLobby(timeoutMs)
 end
 
 function ArenaPage.tapClose(delayMs)
-	delayMs = delayMs or 1200
-	local btn = F.lobby.closeBtn
-	tap(math.random(btn[1] , btn[3]) , math.random(btn[2] , btn[4]))
-	sleep(delayMs)
+	Touch.tapArea(F.lobby.closeBtn , delayMs or 1200)
 end
 
 function ArenaPage.readMedalAndTicket()
 	local words = Ocr.recognizeWords(F.lobby.medalTicketOcr)
 	if #words < 2 then
-		Logger.warn(TAG .. " 奖牌/门票 OCR 不足 raw=" .. table.concat(words , ","))
 		return nil , nil
 	end
 	local medal = U.parseNumber(words[1])
 	local ticketInfo = U.parseStamina(words[2])
 	local ticket = ticketInfo and ticketInfo.current or U.parseNumber(words[2])
-	Logger.debug(string.format(
-		TAG .. " OCR 奖牌=%s 门票=%s raw=[%s,%s]" ,
-		tostring(medal) , tostring(ticket) , words[1] , words[2]
-	))
 	return medal , ticket
 end
 
 function ArenaPage.readTrophyCount()
 	local raw = Ocr.recognizeText(F.lobby.trophyOcr)
 	if not raw or raw == "" then
-		Logger.warn(TAG .. " 奖杯 OCR 为空")
 		return nil
 	end
 	local parsed = U.parseStamina(raw)
-	local count = parsed and parsed.current or U.parseNumber(raw)
-	Logger.debug(TAG .. " OCR 奖杯 raw=" .. raw .. " parsed=" .. tostring(count))
-	return count
+	return parsed and parsed.current or U.parseNumber(raw)
 end
 
 function ArenaPage.readOpponentInfo(location)
 	local ret = findMultiColorAllT(F.opponent.findDef)
 	local info = {
 		site = {0 , 0} ,
-		power = 0 ,
-		trophies = 0 ,
 		isBattled = false ,
 		battleResult = "" ,
 	}
 	if not ret or not ret[location] then
-		Logger.warn(TAG .. " 未找到对手位 " .. tostring(location))
 		return info
 	end
-
+	
 	local targetX , targetY = ret[location].x , ret[location].y
 	info.site = { targetX , targetY }
-
+	
 	local baseX , baseY = F.opponent.baseSite[1] , F.opponent.baseSite[2]
 	local ocrCfg = F.opponent.numberOcr
-	local pr = F.opponent.powerRect
 	local tr = F.opponent.trophyRect
-	local powerRect = U.generateNewPos(targetX , targetY , baseX , baseY , pr[1] , pr[2] , pr[3] , pr[4])
 	local trophyRect = U.generateNewPos(targetX , targetY , baseX , baseY , tr[1] , tr[2] , tr[3] , tr[4])
-
-	local power = Ocr.recognizeNumber(powerRect , ocrCfg)
-	if power and power ~= "" then
-		info.power = U.parseNumber(power) or 0
-	end
+	
 	local trophies = Ocr.recognizeNumber(trophyRect , ocrCfg)
 	if trophies and trophies ~= "" then
 		info.trophies = U.parseNumber(trophies) or 0
 	end
-
+	
 	local rx = targetX + F.opponent.resultOffset[1]
 	local ry = targetY + F.opponent.resultOffset[2]
 	local c = F.opponent.resultColors
@@ -247,27 +130,57 @@ function ArenaPage.readOpponentInfo(location)
 	elseif cmpColor(rx , ry , c.lose , 0.95) == 1 then
 		info.isBattled , info.battleResult = true , "失败"
 	end
-	Logger.debug(string.format(
-		TAG .. " 对手位%d 战力=%d 奖杯=%d 已战=%s 结果=%s 坐标=(%d,%d)" ,
-		location , info.power , info.trophies ,
-		tostring(info.isBattled) , info.battleResult ,
-		info.site[1] , info.site[2]
-	))
 	return info
+end
+
+local function isClose(a , b , threshold)
+	if a == nil or b == nil or threshold == nil then
+		return false
+	end
+	return math.abs(a - b) < threshold
+end
+
+--- 扫描当前页所有对手，返回第一个符合要求的对手信息
+--- @param cfg table 用户配置（含 trophyDiff）
+--- @param myTrophy number 我方当前奖杯数
+--- @return table|nil 对手信息，无合适对手返回 nil
+function ArenaPage.findFirstValidOpponent(cfg , myTrophy)
+	local ret = findMultiColorAllT(F.opponent.findDef)
+	if not ret or #ret == 0 then
+		return nil
+	end
+	
+	local trophyDiff = cfg and cfg.trophyDiff or 0
+	for loc = 1 , #ret do
+		local info = ArenaPage.readOpponentInfo(loc)
+		if info.site[1] ~= 0 and info.site[2] ~= 0 then
+			if info.isBattled then
+				Logger.info(string.format(
+				TAG .. " 位%d 已战斗(%s) 跳过" ,
+				loc , info.battleResult
+				))
+			elseif myTrophy > info.trophies and not isClose(myTrophy , info.trophies , trophyDiff) then
+				Logger.info(string.format(
+				TAG .. " 位%d 奖杯过滤 我方=%d 对手=%d" ,
+				loc , myTrophy , info.trophies
+				))
+			else
+				Logger.info(string.format(
+				TAG .. " 位%d 可开战  奖杯=%d" ,
+				loc , info.trophies
+				))
+				return info
+			end
+		end
+	end
+	return nil
 end
 
 function ArenaPage.swipePageLeft()
 	local s = F.pagination.swipeLeft
 	Logger.debug(TAG .. " 左滑翻页")
-	swipe(s[1] , s[2] , s[3] , s[4] , 500)
-	sleep(1000)
-end
-
-function ArenaPage.swipePageRight()
-	local s = F.pagination.swipeRight
-	Logger.debug(TAG .. " 右滑翻页")
-	swipe(s[1] , s[2] , s[3] , s[4] , 500)
-	sleep(1000)
+	Touch.swipeX(s[1] , s[3] , s[2] , { moveMs = 500 , holdMs = 200 })
+	Guard.sleep(1000 , 500)
 end
 
 function ArenaPage.runBattle()
@@ -275,38 +188,40 @@ function ArenaPage.runBattle()
 	if not waitFeature(F.teamSelect.feature , 30000 , 500 , "队伍选择") then
 		return nil
 	end
-
+	
 	local start = F.teamSelect.startBattle
 	Logger.info(TAG .. " 点击开始战斗")
-	tap(start[1] , start[2])
-
-	local deployDialog = DialogLib.new(F.dialog.deployMore , { tag = TAG })
-	local toppingDialog = DialogLib.new(F.dialog.missingTopping , { tag = TAG })
-	local ok , summary = DialogLib.resolveUntilIdle({
-		{ dialog = deployDialog , name = "deployMore" , priority = 10 ,
-			opts = { action = "confirm" , waitGoneMs = 1000 , intervalMs = 500 } } ,
-		{ dialog = toppingDialog , name = "missingTopping" , priority = 10 ,
-			opts = { action = "confirm" , waitGoneMs = 1000 , intervalMs = 500 } } ,
-	} , { timeoutMs = 8000 , minWaitMs = 500 , settleMs = 800 , maxHandled = 2 , tag = TAG })
-	if not ok then
-		Logger.warn(TAG .. " 战斗前弹窗处理失败 | " .. tostring(summary and summary.reason))
+	Touch.tapR(start[1] , start[2] , 1000)
+	
+	-- 处理弹窗
+	if Color.match(F.dialog.deployMore.feature) then
+		Touch.tapR(F.dialog.deployMore.confirm[1] , F.dialog.deployMore.confirm[2] , 1000)
 	end
-
-	-- 战斗开始 UI 只短暂闪现，不能用来判断「已在战斗中」
-	if not waitUntilGone(F.teamSelect.feature , 15000 , 500 , "队伍选择") then
+	if Color.match(F.dialog.missingTopping.feature) then
+		Touch.tapR(F.dialog.missingTopping.confirm[1] , F.dialog.missingTopping.confirm[2] , 0)
+	end
+	
+	-- 等待队伍选择页消失，作为进入战斗的标志
+	Logger.info(TAG .. " 等待队伍选择页消失")
+	if not Color.waitGone(F.teamSelect.feature , 30000 , 500) then
+		Logger.warn(TAG .. " 队伍选择页未消失，可能未进入战斗")
 		return nil
 	end
+	
 	Logger.info(TAG .. " 已进入战斗，等待结算页")
 	if not waitFeature(F.settlement.feature , 120000 , 1000 , "结算页") then
+		Logger.warn(TAG .. " 未等到结算页")
 		return nil
 	end
-
+	
 	Guard.sleep(1500 , 500)
 	local result = Ocr.recognizeText(F.settlement.resultOcr)
 	Logger.info(TAG .. " 战斗结果: " .. tostring(result))
-
-	leaveSettlement()
-	Logger.info(TAG .. " 战斗流程结束 lobby=" .. tostring(ArenaPage.isLobby()))
+	
+	if not leaveSettlement() and not ArenaPage.isLobby() then
+		Logger.warn(TAG .. " 离开结算失败")
+		return nil
+	end
 	return result
 end
 
@@ -316,83 +231,74 @@ function ArenaPage.isFreeRefresh()
 end
 
 function ArenaPage.tapFreeRefresh()
-	tap(F.lobby.freeRefreshTap[1] , F.lobby.freeRefreshTap[2])
+	Touch.tapR(F.lobby.freeRefreshTap[1] , F.lobby.freeRefreshTap[2] , 1000)
 end
 
---- 读取刷新倒计时并解析为秒数
---- @return number|nil 剩余秒数，解析失败返回 nil
 function ArenaPage.readRefreshCountdown()
 	local raw = Ocr.recognizeText(F.lobby.refreshOcr)
 	if not raw or raw == "" then
-		Logger.warn(TAG .. " 刷新倒计时 OCR 为空")
 		return nil
 	end
-
+	
 	local text = U.keepHanAlphaNum(raw)
-	Logger.debug(TAG .. " 刷新倒计时 OCR raw=" .. raw .. " clean=" .. text)
-
-	-- 匹配 "X分Y秒" / "X分" / "Y秒"
-	local minStr , secStr = text:match("(%d+)分(%d+)秒")
-	if minStr and secStr then
-		return tonumber(minStr) * 60 + tonumber(secStr)
+	Logger.debug(TAG .. " 刷新倒计时原始OCR=[" .. tostring(raw) .. "] 过滤后=[" .. text .. "]")
+	
+	-- 先提取所有数字，再按"分/秒"关键字组合（兼容 OCR 中间夹杂乱码）
+	local numbers = {}
+	for num in text:gmatch("%d+") do
+		numbers[#numbers + 1] = tonumber(num)
 	end
-
-	minStr = text:match("(%d+)分")
-	if minStr then
-		return tonumber(minStr) * 60
+	
+	local hasMin = text:find("分") ~= nil
+	local hasSec = text:find("秒") ~= nil
+	
+	if #numbers == 0 then
+		Logger.warn(TAG .. " 未能解析倒计时: " .. text)
+		return nil
 	end
-
-	secStr = text:match("(%d+)秒")
-	if secStr then
-		return tonumber(secStr)
+	
+	-- 同时出现"分"和"秒"：取前两个数字分别作为分、秒
+	if hasMin and hasSec then
+		if #numbers >= 2 then
+			return numbers[1] * 60 + numbers[2]
+		else
+			Logger.warn(TAG .. " 有分秒关键字但只有一个数字: " .. text)
+			return numbers[1] * 60
+		end
 	end
-
-	-- 匹配 "MM:SS" / "M:SS"
+	
+	-- 只有"秒"
+	if hasSec then
+		return numbers[1]
+	end
+	
+	-- 只有"分"
+	if hasMin then
+		Logger.warn(TAG .. " 只解析到分钟，秒数缺失: " .. text)
+		return numbers[1] * 60
+	end
+	
+	-- 兜底：冒号格式 mm:ss
 	local mm , ss = text:match("(%d+):(%d+)")
 	if mm and ss then
 		return tonumber(mm) * 60 + tonumber(ss)
 	end
-
-	Logger.warn(TAG .. " 无法解析刷新倒计时 text=" .. text)
+	
+	Logger.warn(TAG .. " 未能解析倒计时: " .. text)
 	return nil
-end
-
-function ArenaPage.waitFreeRefresh()
-	local maxWait = 10 * 60 * 1000
-	local startTick = tickCount()
-	Logger.info(TAG .. " 等待免费刷新")
-	while tickCount() - startTick < maxWait do
-		if ArenaPage.isFreeRefresh() then
-			Logger.info(TAG .. " 点击免费刷新")
-			tap(F.lobby.freeRefreshTap[1] , F.lobby.freeRefreshTap[2])
-			sleep(1000)
-			return true
-		end
-		local refreshText = U.keepHanAlphaNum(Ocr.recognizeText(F.lobby.refreshOcr))
-		if refreshText == "剩余0秒" then
-			Logger.info(TAG .. " 刷新倒计时归零，确认刷新")
-			tap(1205 , 843)
-			sleep(1500)
-			tap(689 , 845)
-		end
-		sleep(1000)
-	end
-	Logger.warn(TAG .. " 等待免费刷新超时")
-	return false
 end
 
 function ArenaPage.buyTicket()
 	Logger.info(TAG .. " 打开买票弹窗")
-	tap(F.lobby.buyTicketBtn[1] , F.lobby.buyTicketBtn[2])
-	sleep(1500)
+	Touch.tapR(F.lobby.buyTicketBtn[1] , F.lobby.buyTicketBtn[2] , 1500)
 	local s = F.lobby.buyTicketSlider
 	Logger.debug(TAG .. " 拖动买票滑条")
-	touchDown(1 , s[1] , s[2])
-	sleep(50)
-	touchMoveEx(1 , s[3] , s[4] , 1000)
-	touchUp(1)
-	sleep(1000)
-	tap(F.lobby.buyTicketConfirm[1] , F.lobby.buyTicketConfirm[2])
+	Touch.swipeEx({
+		x1 = s[1] , y1 = s[2] , x2 = s[3] , y2 = s[4] ,
+		moveMs = 1000 , holdMs = 200 , downMs = 50 ,
+	})
+	Guard.sleep(1000 , 500)
+	Touch.tapR(F.lobby.buyTicketConfirm[1] , F.lobby.buyTicketConfirm[2] , 0)
 	Logger.info(TAG .. " 买票确认已点击")
 end
 

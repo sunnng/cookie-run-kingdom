@@ -257,15 +257,11 @@ function Register.all()
 				Logger.info("[Register] 矿山待执行，跳过王国竞技场")
 				return false
 			end
-			local maxBattles = arena.maxBattles
-			if maxBattles and maxBattles > 0 then
-				if ArenaSession.totalBattles() >= maxBattles then
-					return false
-				end
+			if ArenaSession.isReachMaxBattles(arena) then
+				return false
 			end
 			local refreshRemain = ArenaSession.getTimeUntilRefresh()
 			if refreshRemain > 0 then
-				StatusHud.setTask("王国竞技场" , string.format("刷新等待 %ds" , refreshRemain))
 				Logger.info("[Register] 竞技场免费刷新等待中 " .. refreshRemain .. "s")
 				return false
 			end
